@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>🎾 מגרשי טניס - גבעת חיים איחוד</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gutter-w: 52px;
+      --day-hdr-h: 54px;
+      --court-hdr-h: 22px;
+      --slot-h: 20px;
+      --green: #2e7d32;
+      --green-dk: #1b5e20;
+      --border: #e4e4e4;
+      --border-hr: #d0d0d0;
+    }
+
+    html, body, #root { height: 100%; overflow: hidden; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      background: #eef1f0;
+      color: #111;
+    }
+
+    #root {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #fff;
+      box-shadow: 0 0 32px rgba(0,0,0,.13);
+    }
+
+    /* ─ Header ───────────────────────────────────── */
+    .app-hdr {
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--green-dk), var(--green));
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      gap: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.22);
+      z-index: 20;
+    }
+    .app-title { font-size: 1.05rem; font-weight: 800; font-family: Arial, sans-serif !important; }
+    .app-subtitle { font-size: .68rem; font-weight: 400; opacity: .78; margin-top: 2px; font-family: Arial, sans-serif; }
+    .user-chip {
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 20px;
+      padding: 4px 13px;
+      font-size: .81rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .user-chip:hover { background: rgba(255,255,255,.28); }
+
+    /* ─ Week nav ──────────────────────────────────── */
+    .week-nav {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 12px;
+      background: #f8f9f8;
+      border-bottom: 1px solid var(--border);
+      gap: 8px;
+      z-index: 10;
+    }
+    .wn-btn {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 5px 11px;
+      font-size: .82rem;
+      cursor: pointer;
+      color: #333;
+      white-space: nowrap;
+    }
+    .wn-btn:hover { background: #f2f2f2; }
+    .wn-center { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .wn-label  { font-size: .87rem; font-weight: 700; color: #1a1a1a; }
+    .wn-sub    { font-size: .7rem;  color: #999; }
+    .today-btn {
+      background: none;
+      border: 1px solid var(--green);
+      color: var(--green);
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: .7rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* ─ Calendar shell ────────────────────────────── */
+    .cal-shell {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;           /* single scroll container for both axes */
+      -webkit-overflow-scrolling: touch;
+      /* direction stays RTL (from html) so overflow expands leftward
+         and the time gutter on the right is naturally "stuck" at start */
+    }
+
+    /* inner wrapper — width driven by content */
+    .cal-inner {
+      display: flex;
+      flex-direction: column;
+      min-width: max-content;   /* never compress columns */
+    }
+
+    /* ─ Sticky header rows ────────────────────────── */
+    .hdr-row-1 {
+      position: sticky;
+      top: 0;
+      z-index: 12;
+      display: flex;
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      height: var(--day-hdr-h);
+    }
+    .hdr-row-2 {
+      position: sticky;
+      top: var(--day-hdr-h);
+      z-index: 11;
+      display: flex;
+      background: #f4f7f4;
+      border-bottom: 2px solid var(--border-hr);
+      height: var(--court-hdr-h);
+    }
+
+    /* Corner cells — sticky on BOTH axes */
+    .corner {
+      position: sticky;
+      right: 0;
+      flex-shrink: 0;
+      width: var(--gutter-w);
+      background: inherit;      /* inherit from parent row */
+      z-index: 15;
+      border-left: 1px solid var(--border);
+    }
+
+    /* Day header group (spans 2 court columns) */
+    .day-hd {
+      flex: 1;
+      min-width: 72px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+      border-left: 1px solid var(--border);
+      padding: 4px 2px;
+    }
+    .day-hd .dn  { font-size: .71rem; color: #888; font-weight: 500; }
+    .day-hd .dd  {
+      font-size: .88rem; font-weight: 800;
+      min-width: 36px; height: 26px; line-height: 26px;
+      padding: 0 5px;
+      text-align: center; border-radius: 13px;
+    }
+    .day-hd.today .dd { background: var(--green); color: #fff; }
+    .day-hd.past .dn,
+    .day-hd.past .dd  { color: #ccc; }
+
+    /* Court sub-header cells */
+    .court-sub-day {
+      flex: 1;
+      min-width: 72px;
+      display: flex;
+      border-left: 1px solid var(--border);
+    }
+    .court-sub-cell {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .64rem;
+      font-weight: 700;
+      color: #555;
+      border-left: 1px solid var(--border);
+      white-space: nowrap;
+      overflow: hidden;
+      padding: 0 2px;
+    }
+    .court-sub-cell:first-child { border-left: none; }
+    .cnum { color: var(--green); font-size: .75rem; margin-left: 2px; }
+
+    /* ─ Body row (time gutter + day groups) ────────── */
+    .body-row { display: flex; }
+
+    /* Time gutter — sticky to the right */
+    .time-gutter {
+      position: sticky;
+      right: 0;
+      z-index: 10;
+      flex-shrink: 0;
+      width: var(--gutter-w);
+      background: #fff;
+      border-left: 1px solid var(--border);
+    }
+    .tlabel {
+      height: var(--slot-h);
+      font-size: .6rem;
+      color: #999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 6px;
+    }
+
+    /* Day groups */
+    .days-area { display: flex; flex: 1; }
+    .day-group  {
+      flex: 1;
+      min-width: 72px;
+      display: flex;
+      border-left: 1px solid var(--border-hr);
+    }
+
+    /* Individual court column */
+    .court-col {
+      flex: 1;
+      position: relative;
+      border-left: 1px solid var(--border);
+      touch-action: none;
+      cursor: crosshair;
+      user-select: none;
+    }
+    .court-col:first-child { border-left: none; }
+    .court-col.past-day    { background: rgba(0,0,0,.022); }
+
+    .slot {
+      height: var(--slot-h);
+      border-bottom: 1px solid transparent;
+    }
+    .slot.hr  { border-bottom-color: var(--border); }
+    .slot.hh  { border-bottom-color: #f0f0f0; }
+    .slot.pst { background: rgba(0,0,0,.03); cursor: default; }
+    .slot:not(.pst):hover { background: #e8f5e9; }
+
+    /* Booking block */
+    .bk {
+      position: absolute;
+      left: 1px; right: 1px;
+      border-radius: 4px;
+      padding: 1px 4px;
+      font-size: .63rem;
+      font-weight: 700;
+      line-height: 1.3;
+      overflow: hidden;
+      cursor: pointer;
+      z-index: 8;
+      box-shadow: 0 1px 3px rgba(0,0,0,.18);
+      color: #fff;
+    }
+    /* Court 1 (מערבי) — blue */
+    .bk.c1      { background: #1565c0; }
+    .bk.c1.mine { background: #0d47a1; border-right: 3px solid rgba(255,255,255,0.65); }
+    /* Court 2 (מזרחי) — deep orange */
+    .bk.c2      { background: #e65100; }
+    .bk.c2.mine { background: #bf360c; border-right: 3px solid rgba(255,255,255,0.65); }
+    .bk.past    { opacity: .38; }
+
+    .lesson-blk {
+      position: absolute; left: 0; right: 0; z-index: 2;
+      background: repeating-linear-gradient(
+        -45deg,
+        rgba(230,120,20,.13) 0px, rgba(230,120,20,.13) 4px,
+        rgba(255,245,230,.55) 4px, rgba(255,245,230,.55) 10px
+      );
+      border-top: 1px dashed #e8a060;
+      display: flex; align-items: flex-start; justify-content: center;
+      padding-top: 5px;
+      font-size: .62rem; color: #888; font-weight: 600; letter-spacing: .02em;
+      pointer-events: none;
+      user-select: none;
+    }
+    .bk .bt     { font-weight: 400; font-size: .57rem; opacity: .88; }
+    /* Court column subtle tint */
+    .court-col.tint-c2 { background: rgba(230,81,0,0.03); }
+    /* Court sub-header accent */
+    .c1-accent { color: #1565c0 !important; }
+    .c2-accent { color: #e65100 !important; }
+
+    /* Drag selection */
+    .sel {
+      position: absolute;
+      left: 1px; right: 1px;
+      background: rgba(76,175,80,.25);
+      border: 2px solid #4caf50;
+      border-radius: 4px;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    /* ─ Legend ────────────────────────────────────── */
+    .legend {
+      flex-shrink: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      padding: 4px 12px;
+      font-size: .7rem;
+      color: #777;
+      border-top: 1px solid var(--border);
+      background: #fafafa;
+    }
+    .ldot {
+      display: inline-block;
+      width: 10px; height: 10px;
+      border-radius: 3px;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+
+    /* ─ Modals ────────────────────────────────────── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.48);
+      display: flex; align-items: flex-start; justify-content: center;
+      z-index: 1000;
+      padding: 20px 16px 40px;
+      overflow-y: auto;
+      backdrop-filter: blur(3px);
+    }
+    /* center vertically only when there's enough room */
+    @media (min-height: 500px) {
+      .overlay { align-items: center; }
+    }
+    .modal {
+      background: #fff;
+      border-radius: 16px;
+      padding: 24px;
+      width: 100%; max-width: 360px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.28);
+      animation: pop .16s ease;
+      flex-shrink: 0;
+    }
+    @keyframes pop { from { transform: scale(.93); opacity: 0; } }
+    .modal h2 { font-size: 1.1rem; margin-bottom: 14px; }
+    .info-box {
+      background: #f5f5f5; border-radius: 10px;
+      padding: 12px 14px; margin-bottom: 16px;
+      font-size: .87rem; line-height: 1.75; color: #333;
+    }
+    .txt-in {
+      width: 100%; padding: 10px 12px;
+      border: 2px solid #ddd; border-radius: 8px;
+      font-size: 1rem; text-align: right;
+      font-family: inherit; direction: rtl;
+      margin-bottom: 14px; transition: border-color .2s;
+    }
+    .txt-in:focus { outline: none; border-color: var(--green); }
+    .m-row  { display: flex; gap: 8px; flex-direction: row-reverse; }
+    .btn    {
+      flex: 1; padding: 10px; border: none; border-radius: 8px;
+      font-size: .91rem; font-weight: 700; cursor: pointer;
+      font-family: inherit; transition: filter .15s;
+    }
+    .btn:hover    { filter: brightness(.91); }
+    .btn:disabled { opacity: .48; cursor: default; filter: none; }
+    .btn-ok  { background: var(--green); color: #fff; }
+    .btn-sec { background: #eee; color: #444; }
+    .btn-del { background: #c62828; color: #fff; }
+    .err { color: #c62828; font-size: .81rem; margin-bottom: 10px; }
+
+    @media (max-width: 520px) {
+      :root { --slot-h: 18px; --gutter-w: 40px; --day-hdr-h: 50px; --court-hdr-h: 20px; }
+      .tlabel   { font-size: .55rem; }
+      .day-hd   { min-width: 58px; }
+      .day-hd .dd { font-size: .78rem; min-width: 32px; height: 22px; line-height: 22px; border-radius: 11px; }
+      .day-group, .court-sub-day { min-width: 58px; }
+      .court-sub-cell { font-size: .58rem; }
+      .bk { font-size: .57rem; }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+/* ── Constants ───────────────────────────────────── */
+// מספרי טלפון של אדמינים — רשאים למחוק כל הזמנה
+const ADMINS = [
+  // '0501234567',
+];
+
+const COURTS  = [
+  { id: 'west', n: 1, sub: 'מערבי' },
+  { id: 'east', n: 2, sub: 'מזרחי' },
+];
+const DAYS_HE = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+const SH       = 7;          // start hour
+const EH       = 24;         // end hour (midnight)
+const NS       = (EH-SH)*4;  // 68 slots
+
+// שיעורי טניס קבועים — שני וחמישי 15:30–22:00
+const LESSON_DAYS  = [1, 4]; // 1=שני, 4=חמישי
+const LESSON_START = (15*60+30 - SH*60) / 15; // slot 34
+const LESSON_END   = (22 - SH) * 4;            // slot 60
+
+/* ── Helpers ─────────────────────────────────────── */
+const s2t = s => {
+  const m = (SH*60 + s*15) % (24*60);
+  return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+};
+const ds = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+const weekSun = d => {
+  const x = new Date(d); x.setHours(0,0,0,0);
+  x.setDate(x.getDate() - x.getDay());
+  return x;
+};
+const addD = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+
+const isLesson = dateStr => {
+  const [y,m,d] = dateStr.split('-').map(Number);
+  return LESSON_DAYS.includes(new Date(y,m-1,d).getDay());
+};
+
+const isPast = (date, slot) => {
+  const [y,m,day] = date.split('-').map(Number);
+  const t = new Date(y,m-1,day);
+  t.setMinutes(SH*60 + slot*15);
+  return t < new Date();
+};
+
+const fmtRange = (a,b) => {
+  const o = {day:'numeric',month:'long'};
+  return `${a.toLocaleDateString('he-IL',o)} – ${b.toLocaleDateString('he-IL',o)}`;
+};
+
+const durLbl = n => {
+  const m = n*15;
+  return m<60 ? `${m} דקות` : m===60 ? 'שעה' : m===90 ? 'שעה וחצי' : m===120 ? 'שעתיים' : `${m} דקות`;
+};
+
+/* ── API ─────────────────────────────────────────── */
+const api = {
+  list: (f,t) => fetch(`/api/bookings?from=${f}&to=${t}`).then(r=>r.json()),
+  create: b  => fetch('/api/bookings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)})
+                 .then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error);return j;}),
+  del: id    => fetch(`/api/bookings/${id}`,{method:'DELETE'})
+                 .then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error);return j;}),
+};
+
+/* ── Modals ──────────────────────────────────────── */
+function NameModal({initial, onSave}) {
+  const [name,  setName]  = useState(initial?.name  || '');
+  const [phone, setPhone] = useState(initial?.phone || '');
+  const valid = name.trim() && phone.trim();
+  return (
+    <div className="overlay">
+      <div className="modal">
+        <h2>🎾 ברוכים הבאים!</h2>
+        <p style={{marginBottom:14,color:'#555',fontSize:'.87rem'}}>פרטים אלה ישמרו בדפדפן שלך.</p>
+        <input className="txt-in" placeholder="שם מלא" value={name}
+          onChange={e=>setName(e.target.value)} />
+        <input className="txt-in" placeholder="מספר טלפון" value={phone}
+          onChange={e=>setPhone(e.target.value)}
+          onKeyDown={e=>e.key==='Enter'&&valid&&onSave(name.trim(),phone.trim())}
+          type="tel" inputMode="numeric" />
+        <div className="m-row">
+          <button className="btn btn-ok" disabled={!valid} onClick={()=>onSave(name.trim(),phone.trim())}>המשך</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmModal({sel,user,phone,onOk,onCancel,err}) {
+  const c = COURTS.find(x=>x.id===sel.court);
+  const [y,m,d] = sel.date.split('-').map(Number);
+  const label = new Date(y,m-1,d).toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+  return (
+    <div className="overlay" onClick={onCancel}>
+      <div className="modal" onClick={e=>e.stopPropagation()}>
+        <h2>אישור הזמנה</h2>
+        <div className="info-box">
+          <div>📅 {label}</div>
+          <div>🎾 מגרש {c.n} ({c.sub})</div>
+          <div>🕐 {s2t(sel.startSlot)} – {s2t(sel.endSlot)}</div>
+          <div>⏱ {durLbl(sel.endSlot-sel.startSlot)}</div>
+          <div>👤 {user}</div>
+          <div>📞 {phone}</div>
+        </div>
+        {err && <div className="err">⚠️ {err}</div>}
+        <div className="m-row">
+          <button className="btn btn-ok" onClick={onOk}>אישור</button>
+          <button className="btn btn-sec" onClick={onCancel}>ביטול</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailModal({bk,isOwner,onDel,onClose}) {
+  const c = COURTS.find(x=>x.id===bk.court);
+  const [y,m,d] = bk.date.split('-').map(Number);
+  const label = new Date(y,m-1,d).toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" onClick={e=>e.stopPropagation()}>
+        <h2>פרטי הזמנה</h2>
+        <div className="info-box">
+          <div>📅 {label}</div>
+          <div>🎾 מגרש {c.n} ({c.sub})</div>
+          <div>🕐 {s2t(bk.start_slot)} – {s2t(bk.end_slot)}</div>
+          <div>⏱ {durLbl(bk.end_slot-bk.start_slot)}</div>
+          <div>👤 {bk.user_name}</div>
+          {bk.phone && <div>📞 {bk.phone}</div>}
+        </div>
+        <div className="m-row">
+          {isOwner && <button className="btn btn-del" onClick={onDel}>מחיקת הזמנה</button>}
+          <button className="btn btn-sec" onClick={onClose}>סגירה</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Court column ────────────────────────────────── */
+function CourtCol({courtId, date, bks, sel, user, phone, slotH, pastDay, tint, onDown, onBkClick}) {
+  return (
+    <div
+      className={`court-col${pastDay?' past-day':''}${tint?' tint-c2':''}`}
+      onPointerDown={e=>onDown(e,date,courtId)}
+    >
+      {/* Slot rows */}
+      {Array.from({length:NS},(_,i)=>{
+        const past = isPast(date,i);
+        let cls='slot';
+        if((i+1)%4===0) cls+=' hr'; else if((i+1)%2===0) cls+=' hh';
+        if(past) cls+=' pst';
+        return <div key={i} className={cls} />;
+      })}
+
+      {/* Lesson block */}
+      {isLesson(date)&&(
+        <div className="lesson-blk" style={{top:LESSON_START*slotH, height:(LESSON_END-LESSON_START)*slotH}}>
+          שיעורי טניס
+        </div>
+      )}
+
+      {/* Selection overlay */}
+      {sel&&sel.date===date&&sel.court===courtId&&(
+        <div className="sel" style={{top:sel.startSlot*slotH, height:(sel.endSlot-sel.startSlot)*slotH}} />
+      )}
+
+      {/* Bookings */}
+      {bks.map(b=>{
+        const mine = b.phone===phone||ADMINS.includes(phone);
+        const past = isPast(b.date, b.start_slot);
+        const cc   = b.court==='west' ? 'c1' : 'c2';
+        return (
+          <div key={b.id}
+            className={`bk ${cc} ${mine?'mine':''} ${past?'past':''}`}
+            style={{top:b.start_slot*slotH+1, height:(b.end_slot-b.start_slot)*slotH-2}}
+            onPointerDown={e=>e.stopPropagation()}
+            onClick={e=>{e.stopPropagation();onBkClick(b);}}>
+            <div>{b.user_name}</div>
+            <div className="bt">{s2t(b.start_slot)}–{s2t(b.end_slot)}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── App ─────────────────────────────────────────── */
+function App() {
+  const today = useRef(new Date()).current;
+  const [wkOff,  setWkOff]  = useState(0);
+  const [bks,    setBks]    = useState([]);
+  const [user,   setUser]   = useState(localStorage.getItem('tennisUser')||'');
+  const [phone,  setPhone]  = useState(localStorage.getItem('tennisPhone')||'');
+  const [showNm, setShowNm] = useState(!localStorage.getItem('tennisUser')||!localStorage.getItem('tennisPhone'));
+  const [drag,   setDrag]   = useState(null);
+  const [pend,   setPend]   = useState(null);
+  const [cfmErr, setCfmErr] = useState('');
+  const [selBk,  setSelBk]  = useState(null);
+
+  const ws   = weekSun(addD(today, wkOff*7));
+  const days = Array.from({length:7},(_,i)=>addD(ws,i));
+  const we   = days[6];
+
+  const slotH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slot-h'))||20;
+
+  /* Load */
+  const load = useCallback(async()=>{
+    try { setBks(await api.list(ds(ws),ds(we))); } catch(e){console.error(e);}
+  },[wkOff]);
+
+  useEffect(()=>{load();},[load]);
+  useEffect(()=>{const t=setInterval(load,30000);return()=>clearInterval(t);},[load]);
+
+  /* Compute slot index from absolute clientY — no dependency on currentTarget */
+  const slotFromY = useCallback(clientY => {
+    const shell = document.querySelector('.cal-shell');
+    if (!shell) return 0;
+    const shR    = shell.getBoundingClientRect();
+    const sticky = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--day-hdr-h'))
+                 + parseInt(getComputedStyle(document.documentElement).getPropertyValue('--court-hdr-h'));
+    const y = clientY - shR.top - sticky + shell.scrollTop;
+    return Math.max(0, Math.min(NS-1, Math.floor(y / slotH)));
+  }, [slotH]);
+
+  const mkSel = (date, court, a, b) => {
+    const s = Math.min(a, b);
+    return { date, court, startSlot: s, endSlot: Math.min(s+8, Math.max(a,b)+1) };
+  };
+
+  /* dragRef keeps drag state accessible inside event listeners */
+  const dragRef  = useRef(null);
+  const shellRef = useRef(null);
+
+  /* Attach drag listeners to the cal-shell element (more reliable on iOS than window) */
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+
+    const onMove = e => {
+      if (!dragRef.current) return;
+      e.preventDefault();
+      const slot = slotFromY(e.clientY);
+      setDrag(prev => prev ? { ...prev, cur: slot } : null);
+    };
+
+    const onUp = e => {
+      const d = dragRef.current;
+      if (!d) return;
+      const slot = slotFromY(e.clientY);
+      dragRef.current = null;
+      setDrag(null);
+      const sel = mkSel(d.date, d.court, d.start, slot);
+      if (sel.endSlot - sel.startSlot >= 1) { setPend(sel); setCfmErr(''); }
+    };
+
+    const onCancel = () => {
+      dragRef.current = null;
+      setDrag(null);
+    };
+
+    shell.addEventListener('pointermove',  onMove,  { passive: false });
+    shell.addEventListener('pointerup',    onUp);
+    shell.addEventListener('pointercancel',onCancel);
+    return () => {
+      shell.removeEventListener('pointermove',  onMove);
+      shell.removeEventListener('pointerup',    onUp);
+      shell.removeEventListener('pointercancel',onCancel);
+    };
+  }, [slotFromY]);
+
+  const onDown = (e, date, court) => {
+    if (pend !== null || selBk !== null || showNm) return; // מודל פתוח
+    e.preventDefault();
+    const slot = slotFromY(e.clientY);
+    if (isPast(date, slot)) return;
+    if (isLesson(date) && slot >= LESSON_START) return;
+    const d = { date, court, start: slot, cur: slot };
+    dragRef.current = d;
+    setDrag(d);
+  };
+
+  const curSel = drag ? mkSel(drag.date, drag.court, drag.start, drag.cur) : null;
+
+  const confirm = async()=>{
+    setCfmErr('');
+    try{
+      await api.create({court:pend.court,date:pend.date,startSlot:pend.startSlot,endSlot:pend.endSlot,userName:user,phone});
+      setPend(null); load();
+    }catch(e){setCfmErr(e.message);}
+  };
+
+  const delBk = async()=>{
+    const id = selBk.id;
+    setSelBk(null);
+    setBks(prev => prev.filter(b => b.id !== id)); // עדכון מיידי
+    try { await api.del(id); }
+    catch(e) { alert(e.message); load(); } // טען מחדש אם נכשל
+  };
+
+  const todayStr = ds(today);
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',overflow:'hidden'}}>
+
+      {/* App header */}
+      <div className="app-hdr">
+        <div>
+          <div className="app-title">🎾 מגרשי טניס - גבעת חיים איחוד</div>
+          <div className="app-subtitle">מפתח למגרש ולאור נמצא בת"ד 277 · נא להחזיר בסוף השימוש</div>
+        </div>
+        <div className="user-chip" onClick={()=>setShowNm(true)}>👤 {user||'הגדר שם'}</div>
+      </div>
+
+      {/* Week navigation */}
+      <div className="week-nav">
+        <button className="wn-btn" onClick={()=>setWkOff(o=>o-1)}>◀ שבוע קודם</button>
+        <div className="wn-center">
+          <span className="wn-label">{fmtRange(ws,we)}</span>
+          {wkOff===0
+            ? <span className="wn-sub">שבוע נוכחי</span>
+            : <button className="today-btn" onClick={()=>setWkOff(0)}>היום</button>}
+        </div>
+        <button className="wn-btn" onClick={()=>setWkOff(o=>o+1)}>שבוע הבא ▶</button>
+      </div>
+
+      {/* ── Single scrollable calendar shell ── */}
+      <div className="cal-shell" ref={shellRef}>
+        <div className="cal-inner">
+
+          {/* ── Row 1: day names (sticky top=0) ── */}
+          <div className="hdr-row-1">
+            {/* corner */}
+            <div className="corner" />
+            {/* day cells — each spans 2 court columns */}
+            {days.map((d,i)=>{
+              const s=ds(d);
+              const isToday=s===todayStr;
+              const past=d<today&&!isToday;
+              return (
+                <div key={i} className={`day-hd${isToday?' today':''}${past?' past':''}`}>
+                  <span className="dn">{DAYS_HE[d.getDay()]}</span>
+                  <span className="dd">{d.getDate()}.{d.getMonth()+1}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ── Row 2: court sub-headers (sticky top=var(--day-hdr-h)) ── */}
+          <div className="hdr-row-2">
+            {/* corner */}
+            <div className="corner" style={{borderLeft:'1px solid #e4e4e4'}} />
+            {days.map((_,i)=>(
+              <div key={i} className="court-sub-day">
+                {COURTS.map(c=>{
+                  const acc = c.id==='west' ? 'c1-accent' : 'c2-accent';
+                  return (
+                    <div key={c.id} className="court-sub-cell">
+                      <span className={`cnum ${acc}`}>{c.n}</span>({c.sub})
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+
+          {/* ── Body: time gutter + day groups ── */}
+          <div className="body-row">
+
+            {/* Time gutter (sticky right=0) */}
+            <div className="time-gutter">
+              {Array.from({length:NS},(_,i)=>(
+                <div key={i} className="tlabel" style={{height:slotH}}>
+                  {i%4===0 ? s2t(i) : ''}
+                </div>
+              ))}
+            </div>
+
+            {/* Day groups */}
+            <div className="days-area">
+              {days.map((d,i)=>{
+                const date=ds(d);
+                const pastDay=d<today&&date!==todayStr;
+                return (
+                  <div key={i} className="day-group">
+                    {COURTS.map(c=>(
+                      <CourtCol
+                        key={c.id}
+                        courtId={c.id}
+                        date={date}
+                        bks={bks.filter(b=>b.date===date&&b.court===c.id)}
+                        sel={curSel}
+                        user={user}
+                        phone={phone}
+                        slotH={slotH}
+                        pastDay={pastDay}
+                        tint={c.id==='east'}
+                        onDown={onDown}
+                        onBkClick={setSelBk}
+                      />
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+
+          </div>{/* body-row */}
+        </div>{/* cal-inner */}
+      </div>{/* cal-shell */}
+
+      {/* Legend */}
+      <div className="legend">
+        <span><span className="ldot" style={{background:'#388e3c'}} />ההזמנות שלי</span>
+        <span><span className="ldot" style={{background:'#1565c0'}} />הזמנות אחרים</span>
+        <span><span className="ldot" style={{background:'#ccc'}} />שעות שעברו</span>
+        <span style={{marginRight:'auto',color:'#ccc'}}>גרור לבחירת שעות · לחץ על הזמנה לפרטים</span>
+      </div>
+
+      {showNm && <NameModal initial={{name:user,phone}} onSave={(n,p)=>{localStorage.setItem('tennisUser',n);localStorage.setItem('tennisPhone',p);setUser(n);setPhone(p);setShowNm(false);}} />}
+      {pend   && <ConfirmModal sel={pend} user={user} phone={phone} onOk={confirm} onCancel={()=>setPend(null)} err={cfmErr} />}
+      {selBk  && <DetailModal bk={selBk} isOwner={selBk.phone===phone||ADMINS.includes(phone)} onDel={delBk} onClose={()=>setSelBk(null)} />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
