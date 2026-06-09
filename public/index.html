@@ -374,6 +374,18 @@
     .btn-ok  { background: var(--green); color: #fff; }
     .btn-sec { background: #eee; color: #444; }
     .btn-del { background: #c62828; color: #fff; }
+
+    .role-row { display: flex; gap: 10px; margin-bottom: 18px; }
+    .role-btn {
+      flex: 1; padding: 14px 8px; border-radius: 12px;
+      border: 2px solid #e0e0e0; background: #fafafa;
+      cursor: pointer; text-align: center; transition: all .15s;
+    }
+    .role-btn:hover { border-color: var(--green); background: #f0f7f0; }
+    .role-btn.active { border-color: var(--green); background: #e8f5e9; }
+    .role-btn .role-icon { font-size: 1.6rem; display: block; margin-bottom: 4px; }
+    .role-btn .role-lbl { font-size: .82rem; font-weight: 700; color: #333; }
+    .admin-err { color: #c62828; font-size: .82rem; margin-top: -8px; margin-bottom: 8px; }
     .err { color: #c62828; font-size: .81rem; margin-bottom: 10px; }
 
     @media (max-width: 520px) {
@@ -396,7 +408,8 @@ const { useState, useEffect, useRef, useCallback } = React;
 /* ── Constants ───────────────────────────────────── */
 // מספרי טלפון של אדמינים — רשאים למחוק כל הזמנה
 const ADMINS = [
-  // '0501234567',
+  '0506391216',
+  '0507700623',
 ];
 
 const COURTS  = [
@@ -460,23 +473,68 @@ const api = {
 
 /* ── Modals ──────────────────────────────────────── */
 function NameModal({initial, onSave}) {
+  const [mode,  setMode]  = useState(null); // null | 'player' | 'admin'
   const [name,  setName]  = useState(initial?.name  || '');
   const [phone, setPhone] = useState(initial?.phone || '');
-  const valid = name.trim() && phone.trim();
+  const [err,   setErr]   = useState('');
+
+  const handleSave = () => {
+    if (mode === 'admin') {
+      if (!ADMINS.includes(phone.trim())) { setErr('מספר הטלפון אינו מורשה כמנהל'); return; }
+      onSave(name.trim() || 'מנהל', phone.trim());
+    } else {
+      onSave(name.trim(), phone.trim());
+    }
+  };
+
+  const validPlayer = name.trim() && phone.trim();
+  const validAdmin  = phone.trim();
+
   return (
     <div className="overlay">
       <div className="modal">
         <h2>🎾 ברוכים הבאים!</h2>
-        <p style={{marginBottom:14,color:'#555',fontSize:'.87rem'}}>פרטים אלה ישמרו בדפדפן שלך.</p>
-        <input className="txt-in" placeholder="שם מלא" value={name}
-          onChange={e=>setName(e.target.value)} />
-        <input className="txt-in" placeholder="מספר טלפון" value={phone}
-          onChange={e=>setPhone(e.target.value)}
-          onKeyDown={e=>e.key==='Enter'&&valid&&onSave(name.trim(),phone.trim())}
-          type="tel" inputMode="numeric" />
-        <div className="m-row">
-          <button className="btn btn-ok" disabled={!valid} onClick={()=>onSave(name.trim(),phone.trim())}>המשך</button>
-        </div>
+
+        {!mode && <>
+          <p style={{marginBottom:14,color:'#555',fontSize:'.87rem'}}>כיצד תרצה להיכנס?</p>
+          <div className="role-row">
+            <button className="role-btn" onClick={()=>setMode('player')}>
+              <span className="role-icon">🏃</span>
+              <span className="role-lbl">שחקן</span>
+            </button>
+            <button className="role-btn" onClick={()=>setMode('admin')}>
+              <span className="role-icon">🛡️</span>
+              <span className="role-lbl">מנהל</span>
+            </button>
+          </div>
+        </>}
+
+        {mode === 'player' && <>
+          <p style={{marginBottom:14,color:'#555',fontSize:'.87rem'}}>פרטים אלה ישמרו בדפדפן שלך.</p>
+          <input className="txt-in" placeholder="שם מלא" value={name}
+            onChange={e=>setName(e.target.value)} />
+          <input className="txt-in" placeholder="מספר טלפון" value={phone}
+            onChange={e=>setPhone(e.target.value)}
+            type="tel" inputMode="numeric" />
+          <div className="m-row">
+            <button className="btn btn-ok" disabled={!validPlayer} onClick={handleSave}>המשך</button>
+            <button className="btn btn-sec" onClick={()=>setMode(null)}>חזרה</button>
+          </div>
+        </>}
+
+        {mode === 'admin' && <>
+          <p style={{marginBottom:14,color:'#555',fontSize:'.87rem'}}>הזן את מספר הטלפון המורשה.</p>
+          <input className="txt-in" placeholder="שם (אופציונלי)" value={name}
+            onChange={e=>setName(e.target.value)} />
+          <input className="txt-in" placeholder="מספר טלפון" value={phone}
+            onChange={e=>{setPhone(e.target.value);setErr('');}}
+            type="tel" inputMode="numeric" />
+          {err && <div className="admin-err">⚠️ {err}</div>}
+          <div className="m-row">
+            <button className="btn btn-ok" disabled={!validAdmin} onClick={handleSave}>כניסה כמנהל</button>
+            <button className="btn btn-sec" onClick={()=>setMode(null)}>חזרה</button>
+          </div>
+        </>}
       </div>
     </div>
   );
