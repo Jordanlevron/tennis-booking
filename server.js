@@ -4,7 +4,8 @@ const path = require('path');
 const fs   = require('fs');
 
 const app    = express();
-const DB_FILE = path.join(__dirname, 'bookings.json');
+const DATA_DIR = process.env.FLY_APP_NAME ? '/app/data' : __dirname;
+const DB_FILE  = path.join(DATA_DIR, 'bookings.json');
 
 /* ── Simple JSON store ─────────────────────────────── */
 function readDB() {
