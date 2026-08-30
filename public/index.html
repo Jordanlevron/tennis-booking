@@ -4,9 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>🎾 מגרשי טניס - גבעת חיים איחוד</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400&display=swap" rel="stylesheet" />
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.7/babel.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -52,7 +53,7 @@
       box-shadow: 0 2px 6px rgba(0,0,0,.22);
       z-index: 20;
     }
-    .app-title { font-size: 1.05rem; font-weight: 800; font-family: Arial, sans-serif !important; }
+    .app-title { font-size: 1.05rem; font-weight: 400; font-family: 'Rubik', sans-serif !important; }
     .app-subtitle { font-size: .68rem; font-weight: 400; opacity: .78; margin-top: 2px; font-family: Arial, sans-serif; }
     .user-chip {
       background: rgba(255,255,255,.18);
@@ -194,6 +195,8 @@
       padding: 0 2px;
     }
     .court-sub-cell:first-child { border-left: none; }
+    .court-sub-cell.c1-accent { background: rgba(21,101,192,.08); color: #333; }
+    .court-sub-cell.c2-accent { background: rgba(230,81,0,.08);   color: #333; }
     .cnum { color: var(--green); font-size: .75rem; margin-left: 2px; }
 
     /* ─ Body row (time gutter + day groups) ────────── */
@@ -233,7 +236,7 @@
       flex: 1;
       position: relative;
       border-left: 1px solid var(--border);
-      touch-action: none;
+      touch-action: pan-x pan-y;
       cursor: crosshair;
       user-select: none;
     }
@@ -265,33 +268,37 @@
       color: #fff;
     }
     /* Court 1 (מערבי) — blue */
-    .bk.c1      { background: #1565c0; }
-    .bk.c1.mine { background: #0d47a1; border-right: 3px solid rgba(255,255,255,0.65); }
+    .bk.c1 { background: #1565c0; }
     /* Court 2 (מזרחי) — deep orange */
-    .bk.c2      { background: #e65100; }
-    .bk.c2.mine { background: #bf360c; border-right: 3px solid rgba(255,255,255,0.65); }
-    .bk.past    { opacity: .38; }
-
-    .lesson-blk {
-      position: absolute; left: 0; right: 0; z-index: 2;
+    .bk.c2 { background: #e65100; }
+    /* My bookings — green (overrides court color) */
+    .bk.mine { background: #2e7d32; border-right: 3px solid rgba(255,255,255,0.65); }
+    /* Tennis lesson bookings — diagonal stripes per court color */
+    .bk.lesson {
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,.4);
+    }
+    .bk.c1.lesson {
       background: repeating-linear-gradient(
         -45deg,
-        rgba(230,120,20,.13) 0px, rgba(230,120,20,.13) 4px,
-        rgba(255,245,230,.55) 4px, rgba(255,245,230,.55) 10px
-      );
-      border-top: 1px dashed #e8a060;
-      display: flex; align-items: flex-start; justify-content: center;
-      padding-top: 5px;
-      font-size: .62rem; color: #888; font-weight: 600; letter-spacing: .02em;
-      pointer-events: none;
-      user-select: none;
+        #5b9bd5 0px, #5b9bd5 5px,
+        #a8cff0 5px, #a8cff0 12px
+      ) !important;
+      border: 1px solid #4a86c0;
     }
+    .bk.c2.lesson {
+      background: repeating-linear-gradient(
+        -45deg,
+        #e07b3a 0px, #e07b3a 5px,
+        #f5c09a 5px, #f5c09a 12px
+      ) !important;
+      border: 1px solid #c9682a;
+    }
+    .bk.past    { opacity: .38; }
+
     .bk .bt     { font-weight: 400; font-size: .57rem; opacity: .88; }
     /* Court column subtle tint */
     .court-col.tint-c2 { background: rgba(230,81,0,0.03); }
-    /* Court sub-header accent */
-    .c1-accent { color: #1565c0 !important; }
-    .c2-accent { color: #e65100 !important; }
 
     /* Drag selection */
     .sel {
@@ -386,6 +393,14 @@
     .role-btn .role-icon { font-size: 1.6rem; display: block; margin-bottom: 4px; }
     .role-btn .role-lbl { font-size: .82rem; font-weight: 700; color: #333; }
     .admin-err { color: #c62828; font-size: .82rem; margin-top: -8px; margin-bottom: 8px; }
+
+    .time-sel {
+      width: 100%; padding: 10px 12px; border: 1px solid #ddd;
+      border-radius: 10px; font-size: .95rem; margin-bottom: 12px;
+      background: #fafafa; appearance: none; direction: rtl;
+    }
+    .time-sel:focus { outline: none; border-color: var(--green); }
+    .tp-label { font-size: .78rem; color: #666; margin-bottom: 4px; font-weight: 600; }
     .err { color: #c62828; font-size: .81rem; margin-bottom: 10px; }
 
     @media (max-width: 520px) {
@@ -401,7 +416,6 @@
 </head>
 <body>
 <div id="root"></div>
-
 <script type="text/babel">
 const { useState, useEffect, useRef, useCallback } = React;
 
@@ -421,11 +435,6 @@ const SH       = 7;          // start hour
 const EH       = 24;         // end hour (midnight)
 const NS       = (EH-SH)*4;  // 68 slots
 
-// שיעורי טניס קבועים — שני וחמישי 15:30–22:00
-const LESSON_DAYS  = [1, 4]; // 1=שני, 4=חמישי
-const LESSON_START = (15*60+30 - SH*60) / 15; // slot 34
-const LESSON_END   = (22 - SH) * 4;            // slot 60
-
 /* ── Helpers ─────────────────────────────────────── */
 const s2t = s => {
   const m = (SH*60 + s*15) % (24*60);
@@ -440,10 +449,6 @@ const weekSun = d => {
 };
 const addD = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
 
-const isLesson = dateStr => {
-  const [y,m,d] = dateStr.split('-').map(Number);
-  return LESSON_DAYS.includes(new Date(y,m-1,d).getDay());
-};
 
 const isPast = (date, slot) => {
   const [y,m,day] = date.split('-').map(Number);
@@ -467,7 +472,14 @@ const api = {
   list: (f,t) => fetch(`/api/bookings?from=${f}&to=${t}`).then(r=>r.json()),
   create: b  => fetch('/api/bookings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)})
                  .then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error);return j;}),
-  del: id    => fetch(`/api/bookings/${id}`,{method:'DELETE'})
+  del: (id,phone) => fetch(`/api/bookings/${id}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone})})
+                 .then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error);return j;}),
+  upd: (id,b) => fetch(`/api/bookings/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)})
+                 .then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error);return j;}),
+  recurList:   ()        => fetch('/api/recurring').then(r=>r.json()),
+  recurCreate: (rule)    => fetch('/api/recurring',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rule)})
+                 .then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error);return j;}),
+  recurDel:    (id,phone)=> fetch(`/api/recurring/${id}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone})})
                  .then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error);return j;}),
 };
 
@@ -540,7 +552,48 @@ function NameModal({initial, onSave}) {
   );
 }
 
-function ConfirmModal({sel,user,phone,onOk,onCancel,err}) {
+function TimePickerModal({date, court, slot, endSlot, isAdmin, isLesson, onSelect, onCancel}) {
+  const c = COURTS.find(x=>x.id===court);
+  const [y,m,d] = date.split('-').map(Number);
+  const label = new Date(y,m-1,d).toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+
+  const [start, setStart] = useState(slot);
+  const [end,   setEnd]   = useState(Math.min(endSlot ?? slot + 4, NS));
+
+  const startOpts = Array.from({length: NS}, (_,i) => i).filter(i => !isPast(date, i));
+  const maxSlots  = (isAdmin || isLesson) ? NS : 8;
+  const endOpts   = Array.from({length: maxSlots}, (_,i) => start + i + 1).filter(i => i <= NS);
+
+  const valid = end > start;
+  return (
+    <div className="overlay" onClick={onCancel}>
+      <div className="modal" onClick={e=>e.stopPropagation()}>
+        <h2>בחר שעות</h2>
+        <div className="info-box" style={{marginBottom:16}}>
+          <div>📅 {label}</div>
+          <div>🎾 מגרש {c.n}</div>
+        </div>
+        <div className="tp-label">שעת התחלה</div>
+        <select className="time-sel" value={start}
+          onChange={e=>{ const v=+e.target.value; setStart(v); if(end<=v) setEnd(Math.min(v+4,lessonLimit)); }}>
+          {startOpts.map(i=><option key={i} value={i}>{s2t(i)}</option>)}
+        </select>
+        <div className="tp-label">שעת סיום</div>
+        <select className="time-sel" value={end}
+          onChange={e=>setEnd(+e.target.value)}>
+          {endOpts.map(i=><option key={i} value={i}>{s2t(i)}</option>)}
+        </select>
+        <div className="m-row">
+          <button className="btn btn-ok" disabled={!valid}
+            onClick={()=>onSelect({date,court,startSlot:start,endSlot:end})}>המשך</button>
+          <button className="btn btn-sec" onClick={onCancel}>ביטול</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmModal({sel,user,phone,isAdmin,bookName,setBookName,bookPhone,setBookPhone,bookNote,setBookNote,isLesson,setIsLesson,onOk,onCancel,err}) {
   const c = COURTS.find(x=>x.id===sel.court);
   const [y,m,d] = sel.date.split('-').map(Number);
   const label = new Date(y,m-1,d).toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
@@ -550,15 +603,23 @@ function ConfirmModal({sel,user,phone,onOk,onCancel,err}) {
         <h2>אישור הזמנה</h2>
         <div className="info-box">
           <div>📅 {label}</div>
-          <div>🎾 מגרש {c.n} ({c.sub})</div>
+          <div>🎾 מגרש {c.n}</div>
           <div>🕐 {s2t(sel.startSlot)} – {s2t(sel.endSlot)}</div>
           <div>⏱ {durLbl(sel.endSlot-sel.startSlot)}</div>
-          <div>👤 {user}</div>
-          <div>📞 {phone}</div>
         </div>
+        {isLesson && <div style={{marginBottom:12,fontSize:'.87rem',color:'#1565c0',fontWeight:600}}>🎾 שיעורי טניס</div>}
+        {isAdmin
+          ? <div style={{display:'flex',flexDirection:'column'}}>
+              <input className="txt-in" placeholder="שם שחקן" value={bookName} onChange={e=>setBookName(e.target.value)} />
+              <input className="txt-in" placeholder="טלפון" value={bookPhone} onChange={e=>setBookPhone(e.target.value)} />
+              <div className="tp-label" style={{marginBottom:6,marginTop:4}}>הוספת הערה</div>
+              <textarea className="txt-in" placeholder="אופציונלי" value={bookNote} onChange={e=>setBookNote(e.target.value)}
+                style={{resize:'vertical',minHeight:64,fontFamily:'inherit',fontSize:'.9rem'}}></textarea>
+            </div>
+          : <div style={{marginBottom:14,fontSize:'.87rem',color:'#555'}}>👤 {user}</div>}
         {err && <div className="err">⚠️ {err}</div>}
         <div className="m-row">
-          <button className="btn btn-ok" onClick={onOk}>אישור</button>
+          <button className="btn btn-ok" disabled={!bookName.trim()} onClick={onOk}>אישור</button>
           <button className="btn btn-sec" onClick={onCancel}>ביטול</button>
         </div>
       </div>
@@ -566,24 +627,139 @@ function ConfirmModal({sel,user,phone,onOk,onCancel,err}) {
   );
 }
 
-function DetailModal({bk,isOwner,onDel,onClose}) {
+function RecurringFormModal({onSave,onCancel,err}) {
+  const [name,     setName]     = useState('');
+  const [courts,   setCourts]   = useState(['west']);
+  const [days,     setDays]     = useState([]);
+  const [start,    setStart]    = useState(32); // 15:00
+  const [end,      setEnd]      = useState(36); // 16:00
+  const [fromDate, setFromDate] = useState(ds(new Date()));
+  const [noEnd,    setNoEnd]    = useState(true);
+  const [toDate,   setToDate]   = useState('');
+
+  const toggleDay   = d => setDays(p => p.includes(d) ? p.filter(x=>x!==d) : [...p,d].sort((a,b)=>a-b));
+  const toggleCourt = c => setCourts(p => p.includes(c) ? p.filter(x=>x!==c) : [...p,c]);
+
+  const valid = name.trim() && courts.length && days.length && end > start && fromDate && (noEnd || toDate);
+
+  return (
+    <div className="overlay" onClick={onCancel}>
+      <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:400}}>
+        <h2>➕ הזמנה קבועה חדשה</h2>
+        <input className="txt-in" placeholder="שם (למשל: שיעורי טניס)" value={name} onChange={e=>setName(e.target.value)} />
+
+        <div className="tp-label">מגרשים</div>
+        <div className="m-row" style={{marginBottom:14}}>
+          {COURTS.map(c=>(
+            <button key={c.id} type="button" className="btn"
+              style={{background: courts.includes(c.id) ? 'var(--green)' : '#eee', color: courts.includes(c.id) ? '#fff' : '#444'}}
+              onClick={()=>toggleCourt(c.id)}>מגרש {c.n}</button>
+          ))}
+        </div>
+
+        <div className="tp-label">ימים חוזרים</div>
+        <div style={{display:'flex',gap:4,marginBottom:14,flexWrap:'wrap'}}>
+          {DAYS_HE.map((dn,i)=>(
+            <button key={i} type="button"
+              style={{padding:'6px 10px',borderRadius:6,border:'1px solid #ddd',fontSize:'.78rem',cursor:'pointer',
+                background: days.includes(i) ? 'var(--green)' : '#fff', color: days.includes(i) ? '#fff' : '#333'}}
+              onClick={()=>toggleDay(i)}>{dn}</button>
+          ))}
+        </div>
+
+        <div className="tp-label">שעת התחלה</div>
+        <select className="time-sel" value={start} onChange={e=>{const v=+e.target.value; setStart(v); if(end<=v) setEnd(v+1);}}>
+          {Array.from({length:NS},(_,i)=>i).map(i=><option key={i} value={i}>{s2t(i)}</option>)}
+        </select>
+        <div className="tp-label">שעת סיום</div>
+        <select className="time-sel" value={end} onChange={e=>setEnd(+e.target.value)}>
+          {Array.from({length:NS+1},(_,i)=>i).filter(i=>i>start).map(i=><option key={i} value={i}>{s2t(i)}</option>)}
+        </select>
+
+        <div className="tp-label">תאריך התחלה</div>
+        <input className="txt-in" type="date" value={fromDate} onChange={e=>setFromDate(e.target.value)} />
+
+        <label style={{display:'flex',alignItems:'center',gap:6,marginBottom:10,fontSize:'.85rem',color:'#444'}}>
+          <input type="checkbox" checked={noEnd} onChange={e=>setNoEnd(e.target.checked)} />
+          ללא תאריך סיום
+        </label>
+        {!noEnd && <input className="txt-in" type="date" value={toDate} onChange={e=>setToDate(e.target.value)} />}
+
+        {err && <div className="err">⚠️ {err}</div>}
+        <div className="m-row">
+          <button className="btn btn-ok" disabled={!valid}
+            onClick={()=>onSave({name:name.trim(),courts,days,startSlot:start,endSlot:end,fromDate,toDate:noEnd?null:toDate})}>שמירה</button>
+          <button className="btn btn-sec" onClick={onCancel}>ביטול</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RecurringManageModal({rules,onAdd,onDelete,onClose}) {
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:420}}>
+        <h2>🔁 הזמנות קבועות</h2>
+        {rules.length === 0 && <p style={{color:'#777',fontSize:'.85rem',marginBottom:14}}>אין הזמנות קבועות פעילות.</p>}
+        <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:16,maxHeight:280,overflowY:'auto'}}>
+          {rules.map(r=>(
+            <div key={r.id} style={{border:'1px solid #eee',borderRadius:8,padding:'8px 10px',fontSize:'.82rem'}}>
+              <div style={{fontWeight:700,marginBottom:2}}>{r.name}</div>
+              <div style={{color:'#666'}}>
+                {r.days.map(d=>DAYS_HE[d]).join(', ')} · {s2t(r.startSlot)}–{s2t(r.endSlot)} · {r.courts.map(c=>COURTS.find(x=>x.id===c).n).join('+')}
+                {r.toDate ? ` · עד ${r.toDate}` : ' · ללא תאריך סיום'}
+              </div>
+              <button className="btn btn-del" style={{marginTop:6,padding:'4px 10px',fontSize:'.72rem'}} onClick={()=>onDelete(r.id)}>מחיקה</button>
+            </div>
+          ))}
+        </div>
+        <div className="m-row">
+          <button className="btn btn-ok" onClick={onAdd}>➕ הוספת הזמנה קבועה</button>
+          <button className="btn btn-sec" onClick={onClose}>סגירה</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailModal({bk,isOwner,isAdmin,onDel,onEdit,onSave,onClose}) {
   const c = COURTS.find(x=>x.id===bk.court);
   const [y,m,d] = bk.date.split('-').map(Number);
   const label = new Date(y,m-1,d).toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+  const [editing,  setEditing]  = useState(isAdmin);
+  const [nameVal,  setNameVal]  = useState(bk.user_name);
+  const [phoneVal, setPhoneVal] = useState(bk.phone||'');
+  const [noteVal,  setNoteVal]  = useState(bk.note||'');
   return (
     <div className="overlay" onClick={onClose}>
       <div className="modal" onClick={e=>e.stopPropagation()}>
         <h2>פרטי הזמנה</h2>
         <div className="info-box">
           <div>📅 {label}</div>
-          <div>🎾 מגרש {c.n} ({c.sub})</div>
+          <div>🎾 מגרש {c.n}</div>
           <div>🕐 {s2t(bk.start_slot)} – {s2t(bk.end_slot)}</div>
           <div>⏱ {durLbl(bk.end_slot-bk.start_slot)}</div>
-          <div>👤 {bk.user_name}</div>
-          {bk.phone && <div>📞 {bk.phone}</div>}
+          {!editing && noteVal && <div style={{marginTop:6,paddingTop:6,borderTop:'1px solid #e0e0e0',color:'#555'}}>📝 {noteVal}</div>}
         </div>
+        {isAdmin && editing
+          ? <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:14}}>
+              <input className="txt-in" style={{marginBottom:0}} placeholder="שם שחקן" value={nameVal} onChange={e=>setNameVal(e.target.value)} />
+              <input className="txt-in" style={{marginBottom:0}} placeholder="טלפון" value={phoneVal} onChange={e=>setPhoneVal(e.target.value)} />
+              <div className="tp-label" style={{marginBottom:0}}>הוספת הערה</div>
+              <textarea className="txt-in" style={{marginBottom:0,resize:'vertical',minHeight:64,fontFamily:'inherit',fontSize:'.9rem'}} placeholder="אופציונלי" value={noteVal} onChange={e=>setNoteVal(e.target.value)}></textarea>
+              <div style={{display:'flex',gap:8}}>
+                <button className="btn btn-ok" style={{flex:1}} onClick={()=>{onSave(nameVal.trim(),phoneVal.trim(),noteVal.trim());setEditing(false);}}>שמור</button>
+                <button className="btn btn-sec" style={{flex:1}} onClick={()=>setEditing(false)}>ביטול</button>
+              </div>
+            </div>
+          : <div style={{marginBottom:14,display:'flex',alignItems:'center',gap:8}}>
+              <span style={{fontSize:'.9rem'}}>👤 {nameVal}{phoneVal ? ` · ${phoneVal}` : ''}</span>
+              {isAdmin && <button className="btn btn-sec" style={{padding:'3px 10px',fontSize:'.75rem',flex:'none'}} onClick={()=>setEditing(true)}>✏️</button>}
+            </div>}
         <div className="m-row">
-          {isOwner && <button className="btn btn-del" onClick={onDel}>מחיקת הזמנה</button>}
+          {isOwner && <button className="btn btn-del" onClick={onDel}>מחיקה</button>}
+          {isOwner && <button className="btn btn-ok" onClick={onEdit}>עריכת שעות</button>}
           <button className="btn btn-sec" onClick={onClose}>סגירה</button>
         </div>
       </div>
@@ -592,11 +768,12 @@ function DetailModal({bk,isOwner,onDel,onClose}) {
 }
 
 /* ── Court column ────────────────────────────────── */
-function CourtCol({courtId, date, bks, sel, user, phone, slotH, pastDay, tint, onDown, onBkClick}) {
+function CourtCol({courtId, date, bks, sel, user, phone, slotH, pastDay, tint, onDown, onSlotClick, onBkClick}) {
   return (
     <div
       className={`court-col${pastDay?' past-day':''}${tint?' tint-c2':''}`}
       onPointerDown={e=>onDown(e,date,courtId)}
+      onClick={e=>onSlotClick(e,date,courtId)}
     >
       {/* Slot rows */}
       {Array.from({length:NS},(_,i)=>{
@@ -607,13 +784,6 @@ function CourtCol({courtId, date, bks, sel, user, phone, slotH, pastDay, tint, o
         return <div key={i} className={cls} />;
       })}
 
-      {/* Lesson block */}
-      {isLesson(date)&&(
-        <div className="lesson-blk" style={{top:LESSON_START*slotH, height:(LESSON_END-LESSON_START)*slotH}}>
-          שיעורי טניס
-        </div>
-      )}
-
       {/* Selection overlay */}
       {sel&&sel.date===date&&sel.court===courtId&&(
         <div className="sel" style={{top:sel.startSlot*slotH, height:(sel.endSlot-sel.startSlot)*slotH}} />
@@ -621,17 +791,18 @@ function CourtCol({courtId, date, bks, sel, user, phone, slotH, pastDay, tint, o
 
       {/* Bookings */}
       {bks.map(b=>{
-        const mine = b.phone===phone||ADMINS.includes(phone);
+        const mine = b.phone===phone && !b.is_lesson;
         const past = isPast(b.date, b.start_slot);
         const cc   = b.court==='west' ? 'c1' : 'c2';
         return (
           <div key={b.id}
-            className={`bk ${cc} ${mine?'mine':''} ${past?'past':''}`}
+            className={`bk ${cc} ${b.is_lesson?'lesson':''} ${mine?'mine':''} ${past?'past':''}`}
             style={{top:b.start_slot*slotH+1, height:(b.end_slot-b.start_slot)*slotH-2}}
             onPointerDown={e=>e.stopPropagation()}
             onClick={e=>{e.stopPropagation();onBkClick(b);}}>
             <div>{b.user_name}</div>
             <div className="bt">{s2t(b.start_slot)}–{s2t(b.end_slot)}</div>
+            {b.note && <div className="bt" style={{opacity:.75,marginTop:1}}>{b.note}</div>}
           </div>
         );
       })}
@@ -644,13 +815,26 @@ function App() {
   const today = useRef(new Date()).current;
   const [wkOff,  setWkOff]  = useState(0);
   const [bks,    setBks]    = useState([]);
-  const [user,   setUser]   = useState(localStorage.getItem('tennisUser')||'');
-  const [phone,  setPhone]  = useState(localStorage.getItem('tennisPhone')||'');
-  const [showNm, setShowNm] = useState(!localStorage.getItem('tennisUser')||!localStorage.getItem('tennisPhone'));
-  const [drag,   setDrag]   = useState(null);
-  const [pend,   setPend]   = useState(null);
-  const [cfmErr, setCfmErr] = useState('');
-  const [selBk,  setSelBk]  = useState(null);
+  const [user,      setUser]      = useState(localStorage.getItem('tennisUser')||'');
+  const [phone,     setPhone]     = useState(localStorage.getItem('tennisPhone')||'');
+  const [showNm,    setShowNm]    = useState(!localStorage.getItem('tennisUser')||!localStorage.getItem('tennisPhone'));
+  const [adminMode, setAdminMode] = useState(localStorage.getItem('tennisAdminMode')==='true' && ADMINS.includes(localStorage.getItem('tennisPhone')||''));
+  const [showMode,  setShowMode]  = useState(false);
+  const [drag,     setDrag]     = useState(null);
+  const [pend,     setPend]     = useState(null);
+  const [timePick, setTimePick] = useState(null);
+  const [cfmErr,   setCfmErr]   = useState('');
+  const [selBk,    setSelBk]    = useState(null);
+  const [editBk,   setEditBk]   = useState(null);
+  const [bookName,    setBookName]    = useState(user);
+  const [bookPhone,   setBookPhone]   = useState(phone);
+  const [bookNote,    setBookNote]    = useState('');
+  const [isLessonBk,  setIsLessonBk]  = useState(false);
+  const [typeSelect,  setTypeSelect]  = useState(null); // {date,court,slot,endSlot}
+  const [showRecur,     setShowRecur]     = useState(false);
+  const [showRecurForm, setShowRecurForm] = useState(false);
+  const [recurRules,    setRecurRules]    = useState([]);
+  const [recurErr,      setRecurErr]      = useState('');
 
   const ws   = weekSun(addD(today, wkOff*7));
   const days = Array.from({length:7},(_,i)=>addD(ws,i));
@@ -665,6 +849,14 @@ function App() {
 
   useEffect(()=>{load();},[load]);
   useEffect(()=>{const t=setInterval(load,30000);return()=>clearInterval(t);},[load]);
+
+  // גלילה אוטומטית ל-15:00 בטעינה
+  useEffect(()=>{
+    const shell = shellRef.current;
+    if (!shell) return;
+    const slot15 = (15 - SH) * 4; // slot 32
+    shell.scrollTop = slot15 * slotH;
+  }, []);
 
   /* Compute slot index from absolute clientY — no dependency on currentTarget */
   const slotFromY = useCallback(clientY => {
@@ -683,8 +875,9 @@ function App() {
   };
 
   /* dragRef keeps drag state accessible inside event listeners */
-  const dragRef  = useRef(null);
-  const shellRef = useRef(null);
+  const dragRef     = useRef(null);
+  const shellRef    = useRef(null);
+  const wasDragRef  = useRef(false);
 
   /* Attach drag listeners to the cal-shell element (more reliable on iOS than window) */
   useEffect(() => {
@@ -693,8 +886,9 @@ function App() {
 
     const onMove = e => {
       if (!dragRef.current) return;
-      e.preventDefault();
+      if (e.pointerType !== 'touch') e.preventDefault();
       const slot = slotFromY(e.clientY);
+      if (Math.abs(e.clientY - dragRef.current.startY) > 12) dragRef.current.hasMoved = true;
       setDrag(prev => prev ? { ...prev, cur: slot } : null);
     };
 
@@ -704,8 +898,17 @@ function App() {
       const slot = slotFromY(e.clientY);
       dragRef.current = null;
       setDrag(null);
-      const sel = mkSel(d.date, d.court, d.start, slot);
-      if (sel.endSlot - sel.startSlot >= 1) { setPend(sel); setCfmErr(''); }
+      if (d.hasMoved) {
+        wasDragRef.current = true;
+        const sel = mkSel(d.date, d.court, d.start, slot);
+        if (sel.endSlot - sel.startSlot >= 1) {
+          const tp = {date:sel.date,court:sel.court,slot:sel.startSlot,endSlot:sel.endSlot};
+          setCfmErr('');
+          if (isAdmin) { setTypeSelect(tp); } else { setIsLessonBk(false); setTimePick(tp); }
+        }
+      } else {
+        wasDragRef.current = false;
+      }
     };
 
     const onCancel = () => {
@@ -723,15 +926,32 @@ function App() {
     };
   }, [slotFromY]);
 
+  const isAdmin = adminMode && ADMINS.includes(phone);
+  const canAdmin = ADMINS.includes(phone);
+
+  const toggleAdminMode = val => {
+    setAdminMode(val);
+    localStorage.setItem('tennisAdminMode', val ? 'true' : 'false');
+    setShowMode(false);
+  };
+
   const onDown = (e, date, court) => {
-    if (pend !== null || selBk !== null || showNm) return; // מודל פתוח
-    e.preventDefault();
+    if (e.pointerType === 'touch') return; // גלילה טבעית במגע אצבע
+    if (pend !== null || selBk !== null || showNm || timePick !== null) return; // מודל פתוח
     const slot = slotFromY(e.clientY);
     if (isPast(date, slot)) return;
-    if (isLesson(date) && slot >= LESSON_START) return;
-    const d = { date, court, start: slot, cur: slot };
+    const d = { date, court, start: slot, cur: slot, hasMoved: false, startY: e.clientY };
     dragRef.current = d;
     setDrag(d);
+  };
+
+  const onSlotClick = (e, date, court) => {
+    if (wasDragRef.current) { wasDragRef.current = false; return; }
+    if (pend !== null || selBk !== null || showNm || timePick !== null) return;
+    const slot = slotFromY(e.clientY);
+    if (isPast(date, slot)) return;
+    const tp = { date, court, slot };
+    if (isAdmin) { setCfmErr(''); setTypeSelect(tp); } else { setIsLessonBk(false); setTimePick(tp); }
   };
 
   const curSel = drag ? mkSel(drag.date, drag.court, drag.start, drag.cur) : null;
@@ -739,16 +959,40 @@ function App() {
   const confirm = async()=>{
     setCfmErr('');
     try{
-      await api.create({court:pend.court,date:pend.date,startSlot:pend.startSlot,endSlot:pend.endSlot,userName:user,phone});
+      if (editBk) {
+        await api.upd(editBk.id, {startSlot:pend.startSlot, endSlot:pend.endSlot, phone});
+        setEditBk(null);
+      } else {
+        await api.create({court:pend.court,date:pend.date,startSlot:pend.startSlot,endSlot:pend.endSlot,userName:bookName.trim()||user,phone:isAdmin?(bookPhone||phone):phone,...(isLessonBk?{isLesson:true}:{}),...(isAdmin&&bookNote.trim()?{note:bookNote.trim()}:{})});
+      }
       setPend(null); load();
     }catch(e){setCfmErr(e.message);}
+  };
+
+  const saveDetails = async(id, userName, bookPhone, note) => {
+    try { await api.upd(id, {userName, bookPhone, note, phone}); setSelBk(prev => prev ? {...prev, user_name: userName, phone: bookPhone, note} : null); load(); } catch(e) { alert(e.message); }
+  };
+
+  const loadRecur = async () => {
+    try { setRecurRules(await api.recurList()); } catch(e){ console.error(e); }
+  };
+
+  const addRecur = async (rule) => {
+    setRecurErr('');
+    try { await api.recurCreate({...rule, phone}); setShowRecurForm(false); await loadRecur(); load(); }
+    catch(e){ setRecurErr(e.message); }
+  };
+
+  const delRecur = async (id) => {
+    try { await api.recurDel(id, phone); await loadRecur(); load(); }
+    catch(e){ alert(e.message); }
   };
 
   const delBk = async()=>{
     const id = selBk.id;
     setSelBk(null);
     setBks(prev => prev.filter(b => b.id !== id)); // עדכון מיידי
-    try { await api.del(id); }
+    try { await api.del(id, phone); }
     catch(e) { alert(e.message); load(); } // טען מחדש אם נכשל
   };
 
@@ -763,19 +1007,21 @@ function App() {
           <div className="app-title">🎾 מגרשי טניס - גבעת חיים איחוד</div>
           <div className="app-subtitle">מפתח למגרש ולאור נמצא בת"ד 277 · נא להחזיר בסוף השימוש</div>
         </div>
-        <div className="user-chip" onClick={()=>setShowNm(true)}>👤 {user||'הגדר שם'}</div>
+        <div className="user-chip" onClick={()=>canAdmin ? setShowMode(true) : setShowNm(true)}>
+          👤 {user||'הגדר שם'}{adminMode ? ' (מצב מנהל)' : ''}
+        </div>
       </div>
 
       {/* Week navigation */}
       <div className="week-nav">
-        <button className="wn-btn" onClick={()=>setWkOff(o=>o-1)}>◀ שבוע קודם</button>
+        <button className="wn-btn" onClick={()=>setWkOff(o=>o-1)}>▶ שבוע קודם</button>
         <div className="wn-center">
           <span className="wn-label">{fmtRange(ws,we)}</span>
           {wkOff===0
             ? <span className="wn-sub">שבוע נוכחי</span>
             : <button className="today-btn" onClick={()=>setWkOff(0)}>היום</button>}
         </div>
-        <button className="wn-btn" onClick={()=>setWkOff(o=>o+1)}>שבוע הבא ▶</button>
+        <button className="wn-btn" onClick={()=>setWkOff(o=>o+1)}>שבוע הבא ◀</button>
       </div>
 
       {/* ── Single scrollable calendar shell ── */}
@@ -809,8 +1055,8 @@ function App() {
                 {COURTS.map(c=>{
                   const acc = c.id==='west' ? 'c1-accent' : 'c2-accent';
                   return (
-                    <div key={c.id} className="court-sub-cell">
-                      <span className={`cnum ${acc}`}>{c.n}</span>({c.sub})
+                    <div key={c.id} className={`court-sub-cell ${acc}`}>
+                      <span>מגרש&nbsp;{c.n}</span>
                     </div>
                   );
                 })}
@@ -850,6 +1096,7 @@ function App() {
                         pastDay={pastDay}
                         tint={c.id==='east'}
                         onDown={onDown}
+                        onSlotClick={onSlotClick}
                         onBkClick={setSelBk}
                       />
                     ))}
@@ -864,15 +1111,57 @@ function App() {
 
       {/* Legend */}
       <div className="legend">
-        <span><span className="ldot" style={{background:'#388e3c'}} />ההזמנות שלי</span>
-        <span><span className="ldot" style={{background:'#1565c0'}} />הזמנות אחרים</span>
+        <span><span className="ldot" style={{background:'#2e7d32'}} />ההזמנות שלי</span>
+        <span><span className="ldot" style={{background:'#1565c0'}} />מגרש 1</span>
+        <span><span className="ldot" style={{background:'#e65100'}} />מגרש 2</span>
+        <span><span className="ldot" style={{background:'repeating-linear-gradient(-45deg,#5b9bd5 0px,#5b9bd5 5px,#a8cff0 5px,#a8cff0 12px)'}} />שיעורי טניס מגרש 1</span>
+        <span><span className="ldot" style={{background:'repeating-linear-gradient(-45deg,#e07b3a 0px,#e07b3a 5px,#f5c09a 5px,#f5c09a 12px)'}} />שיעורי טניס מגרש 2</span>
         <span><span className="ldot" style={{background:'#ccc'}} />שעות שעברו</span>
-        <span style={{marginRight:'auto',color:'#ccc'}}>גרור לבחירת שעות · לחץ על הזמנה לפרטים</span>
+        <span style={{marginRight:'auto',color:'#ccc'}}>גרור או לחץ לבחירת שעות · לחץ על הזמנה לפרטים</span>
       </div>
 
-      {showNm && <NameModal initial={{name:user,phone}} onSave={(n,p)=>{localStorage.setItem('tennisUser',n);localStorage.setItem('tennisPhone',p);setUser(n);setPhone(p);setShowNm(false);}} />}
-      {pend   && <ConfirmModal sel={pend} user={user} phone={phone} onOk={confirm} onCancel={()=>setPend(null)} err={cfmErr} />}
-      {selBk  && <DetailModal bk={selBk} isOwner={selBk.phone===phone||ADMINS.includes(phone)} onDel={delBk} onClose={()=>setSelBk(null)} />}
+      {showMode && (
+        <div className="overlay" onClick={()=>setShowMode(false)}>
+          <div className="modal" onClick={e=>e.stopPropagation()}>
+            <h2>👤 {user}</h2>
+            <p style={{marginBottom:18,color:'#555',fontSize:'.87rem'}}>
+              {adminMode ? 'כרגע במצב מנהל — יש לך גישה לאפשרויות עריכה מורחבות.' : 'כרגע במצב שחקן.'}
+            </p>
+            <div className="m-row" style={{flexDirection:'column',gap:10}}>
+              {adminMode
+                ? <button className="btn btn-sec" onClick={()=>toggleAdminMode(false)}>🏃 עבור למצב שחקן</button>
+                : <button className="btn btn-ok"  onClick={()=>toggleAdminMode(true)}>🛡️ עבור למצב מנהל</button>}
+              {adminMode && <button className="btn btn-sec" onClick={()=>{setShowMode(false);setRecurErr('');loadRecur();setShowRecur(true);}}>🔁 הזמנות קבועות</button>}
+              <button className="btn btn-sec" onClick={()=>{setShowMode(false);setShowNm(true);}}>✏️ עריכת פרטים</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showNm && <NameModal initial={{name:user,phone}} onSave={(n,p)=>{localStorage.setItem('tennisUser',n);localStorage.setItem('tennisPhone',p);setUser(n);setPhone(p);setShowNm(false);if(!ADMINS.includes(p)){setAdminMode(false);localStorage.setItem('tennisAdminMode','false');}}} />}
+      {typeSelect && (
+        <div className="overlay" onClick={()=>setTypeSelect(null)}>
+          <div className="modal" onClick={e=>e.stopPropagation()}>
+            <h2>סוג הזמנה</h2>
+            <div className="m-row" style={{flexDirection:'column',gap:10}}>
+              <button className="btn btn-ok" style={{width:'100%'}} onClick={()=>{setIsLessonBk(false);setTimePick(typeSelect);setTypeSelect(null);}}>📅 הזמנה רגילה</button>
+              <button className="btn" style={{width:'100%',background:'#5b9bd5',color:'#fff'}} onClick={()=>{setIsLessonBk(true);setBookName('שיעורי טניס');setTimePick(typeSelect);setTypeSelect(null);}}>🎾 שיעורי טניס</button>
+              <button className="btn btn-sec" style={{width:'100%'}} onClick={()=>setTypeSelect(null)}>ביטול</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {timePick && <TimePickerModal {...timePick} isAdmin={isAdmin} isLesson={isLessonBk} onCancel={()=>{setTimePick(null);setEditBk(null);}}
+        onSelect={sel=>{setTimePick(null);setPend(sel);setCfmErr('');if(!isLessonBk){setBookName(user);setBookPhone(phone);}setBookNote('');}} />}
+      {pend   && <ConfirmModal sel={pend} user={user} phone={phone} isAdmin={isAdmin} bookName={bookName} setBookName={setBookName} bookPhone={bookPhone} setBookPhone={setBookPhone} bookNote={bookNote} setBookNote={setBookNote} isLesson={isLessonBk} setIsLesson={setIsLessonBk} onOk={confirm} onCancel={()=>setPend(null)} err={cfmErr} />}
+      {selBk  && <DetailModal bk={selBk} isOwner={selBk.phone===phone||isAdmin} isAdmin={isAdmin} onDel={delBk}
+        onEdit={()=>{ setEditBk(selBk); setTimePick({date:selBk.date,court:selBk.court,slot:selBk.start_slot,endSlot:selBk.end_slot}); setSelBk(null); }}
+        onSave={(name,ph,note)=>saveDetails(selBk.id,name,ph,note)}
+        onClose={()=>setSelBk(null)} />}
+      {showRecur && <RecurringManageModal rules={recurRules}
+        onAdd={()=>{setShowRecur(false);setRecurErr('');setShowRecurForm(true);}}
+        onDelete={delRecur} onClose={()=>setShowRecur(false)} />}
+      {showRecurForm && <RecurringFormModal onSave={addRecur}
+        onCancel={()=>{setShowRecurForm(false);setShowRecur(true);}} err={recurErr} />}
     </div>
   );
 }
