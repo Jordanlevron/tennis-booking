@@ -131,9 +131,12 @@ app.post('/api/bookings', (req, res) => {
   if (endSlot > 68)
     return res.status(400).json({ error: 'שעה מאוחרת מדי' });
 
+  const isAdminReq  = ADMINS.includes(phone);
+  const lessonFlag  = isAdminReq && !!isLesson; // only an admin phone may mark a booking as a lesson
+
   const duration = endSlot - startSlot;
   // Regular users: max 2 hours. Admins and lesson bookings: unlimited.
-  if (!ADMINS.includes(phone) && !isLesson && (duration < 1 || duration > 8))
+  if (!isAdminReq && !lessonFlag && (duration < 1 || duration > 8))
     return res.status(400).json({ error: 'ניתן להזמין בין 15 דקות לשעתיים' });
   if (duration < 1)
     return res.status(400).json({ error: 'משך הזמן אינו תקין' });
@@ -154,7 +157,7 @@ app.post('/api/bookings', (req, res) => {
     end_slot: endSlot,
     user_name: userName,
     phone: phone || '',
-    ...(isLesson ? { is_lesson: true } : {}),
+    ...(lessonFlag ? { is_lesson: true } : {}),
     ...(note ? { note } : {}),
     created_at: new Date().toISOString(),
   };
