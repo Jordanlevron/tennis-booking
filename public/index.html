@@ -593,10 +593,12 @@ function TimePickerModal({date, court, slot, endSlot, isAdmin, isLesson, onSelec
   );
 }
 
-function ConfirmModal({sel,user,phone,isAdmin,bookName,setBookName,bookPhone,setBookPhone,bookNote,setBookNote,isLesson,setIsLesson,onOk,onCancel,err}) {
+function ConfirmModal({sel,user,phone,isAdmin,bookName,setBookName,bookPhone,setBookPhone,bookNote,setBookNote,isLesson,setIsLesson,
+  isRecurring,setIsRecurring,recurDays,setRecurDays,recurToDate,setRecurToDate,onOk,onCancel,err}) {
   const c = COURTS.find(x=>x.id===sel.court);
   const [y,m,d] = sel.date.split('-').map(Number);
   const label = new Date(y,m-1,d).toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+  const toggleDay = i => setRecurDays(p => p.includes(i) ? p.filter(x=>x!==i) : [...p,i].sort((a,b)=>a-b));
   return (
     <div className="overlay" onClick={onCancel}>
       <div className="modal" onClick={e=>e.stopPropagation()}>
@@ -615,11 +617,29 @@ function ConfirmModal({sel,user,phone,isAdmin,bookName,setBookName,bookPhone,set
               <div className="tp-label" style={{marginBottom:6,marginTop:4}}>הוספת הערה</div>
               <textarea className="txt-in" placeholder="אופציונלי" value={bookNote} onChange={e=>setBookNote(e.target.value)}
                 style={{resize:'vertical',minHeight:64,fontFamily:'inherit',fontSize:'.9rem'}}></textarea>
+
+              <label style={{display:'flex',alignItems:'center',gap:6,marginTop:6,marginBottom:isRecurring?10:14,fontSize:'.85rem',color:'#444',fontWeight:600}}>
+                <input type="checkbox" checked={isRecurring} onChange={e=>setIsRecurring(e.target.checked)} />
+                🔁 הפוך להזמנה קבועה (חוזרת מדי שבוע)
+              </label>
+              {isRecurring && <div style={{background:'#f7f4fb',borderRadius:8,padding:10,marginBottom:14}}>
+                <div className="tp-label">ימים חוזרים</div>
+                <div style={{display:'flex',gap:4,marginBottom:10,flexWrap:'wrap'}}>
+                  {DAYS_HE.map((dn,i)=>(
+                    <button key={i} type="button"
+                      style={{padding:'5px 9px',borderRadius:6,border:'1px solid #ddd',fontSize:'.74rem',cursor:'pointer',
+                        background: recurDays.includes(i) ? 'var(--green)' : '#fff', color: recurDays.includes(i) ? '#fff' : '#333'}}
+                      onClick={()=>toggleDay(i)}>{dn}</button>
+                  ))}
+                </div>
+                <div className="tp-label">תאריך סיום (אופציונלי)</div>
+                <input className="txt-in" style={{marginBottom:0}} type="date" value={recurToDate} onChange={e=>setRecurToDate(e.target.value)} />
+              </div>}
             </div>
           : <div style={{marginBottom:14,fontSize:'.87rem',color:'#555'}}>👤 {user}</div>}
         {err && <div className="err">⚠️ {err}</div>}
         <div className="m-row">
-          <button className="btn btn-ok" disabled={!bookName.trim()} onClick={onOk}>אישור</button>
+          <button className="btn btn-ok" disabled={!bookName.trim() || (isRecurring && !recurDays.length)} onClick={onOk}>אישור</button>
           <button className="btn btn-sec" onClick={onCancel}>ביטול</button>
         </div>
       </div>
@@ -627,76 +647,7 @@ function ConfirmModal({sel,user,phone,isAdmin,bookName,setBookName,bookPhone,set
   );
 }
 
-function RecurringFormModal({onSave,onCancel,err}) {
-  const [name,     setName]     = useState('');
-  const [courts,   setCourts]   = useState(['west']);
-  const [days,     setDays]     = useState([]);
-  const [start,    setStart]    = useState(32); // 15:00
-  const [end,      setEnd]      = useState(36); // 16:00
-  const [fromDate, setFromDate] = useState(ds(new Date()));
-  const [noEnd,    setNoEnd]    = useState(true);
-  const [toDate,   setToDate]   = useState('');
-
-  const toggleDay   = d => setDays(p => p.includes(d) ? p.filter(x=>x!==d) : [...p,d].sort((a,b)=>a-b));
-  const toggleCourt = c => setCourts(p => p.includes(c) ? p.filter(x=>x!==c) : [...p,c]);
-
-  const valid = name.trim() && courts.length && days.length && end > start && fromDate && (noEnd || toDate);
-
-  return (
-    <div className="overlay" onClick={onCancel}>
-      <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:400}}>
-        <h2>➕ הזמנה קבועה חדשה</h2>
-        <input className="txt-in" placeholder="שם (למשל: שיעורי טניס)" value={name} onChange={e=>setName(e.target.value)} />
-
-        <div className="tp-label">מגרשים</div>
-        <div className="m-row" style={{marginBottom:14}}>
-          {COURTS.map(c=>(
-            <button key={c.id} type="button" className="btn"
-              style={{background: courts.includes(c.id) ? 'var(--green)' : '#eee', color: courts.includes(c.id) ? '#fff' : '#444'}}
-              onClick={()=>toggleCourt(c.id)}>מגרש {c.n}</button>
-          ))}
-        </div>
-
-        <div className="tp-label">ימים חוזרים</div>
-        <div style={{display:'flex',gap:4,marginBottom:14,flexWrap:'wrap'}}>
-          {DAYS_HE.map((dn,i)=>(
-            <button key={i} type="button"
-              style={{padding:'6px 10px',borderRadius:6,border:'1px solid #ddd',fontSize:'.78rem',cursor:'pointer',
-                background: days.includes(i) ? 'var(--green)' : '#fff', color: days.includes(i) ? '#fff' : '#333'}}
-              onClick={()=>toggleDay(i)}>{dn}</button>
-          ))}
-        </div>
-
-        <div className="tp-label">שעת התחלה</div>
-        <select className="time-sel" value={start} onChange={e=>{const v=+e.target.value; setStart(v); if(end<=v) setEnd(v+1);}}>
-          {Array.from({length:NS},(_,i)=>i).map(i=><option key={i} value={i}>{s2t(i)}</option>)}
-        </select>
-        <div className="tp-label">שעת סיום</div>
-        <select className="time-sel" value={end} onChange={e=>setEnd(+e.target.value)}>
-          {Array.from({length:NS+1},(_,i)=>i).filter(i=>i>start).map(i=><option key={i} value={i}>{s2t(i)}</option>)}
-        </select>
-
-        <div className="tp-label">תאריך התחלה</div>
-        <input className="txt-in" type="date" value={fromDate} onChange={e=>setFromDate(e.target.value)} />
-
-        <label style={{display:'flex',alignItems:'center',gap:6,marginBottom:10,fontSize:'.85rem',color:'#444'}}>
-          <input type="checkbox" checked={noEnd} onChange={e=>setNoEnd(e.target.checked)} />
-          ללא תאריך סיום
-        </label>
-        {!noEnd && <input className="txt-in" type="date" value={toDate} onChange={e=>setToDate(e.target.value)} />}
-
-        {err && <div className="err">⚠️ {err}</div>}
-        <div className="m-row">
-          <button className="btn btn-ok" disabled={!valid}
-            onClick={()=>onSave({name:name.trim(),courts,days,startSlot:start,endSlot:end,fromDate,toDate:noEnd?null:toDate})}>שמירה</button>
-          <button className="btn btn-sec" onClick={onCancel}>ביטול</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RecurringManageModal({rules,onAdd,onDelete,onClose}) {
+function RecurringManageModal({rules,onDelete,onClose}) {
   return (
     <div className="overlay" onClick={onClose}>
       <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:420}}>
@@ -714,8 +665,8 @@ function RecurringManageModal({rules,onAdd,onDelete,onClose}) {
             </div>
           ))}
         </div>
+        <p style={{color:'#999',fontSize:'.76rem',marginBottom:14}}>ליצירת הזמנה קבועה חדשה: בחרו משבצת בלוח כרגיל, וסמנו "🔁 הפוך להזמנה קבועה" במסך האישור.</p>
         <div className="m-row">
-          <button className="btn btn-ok" onClick={onAdd}>➕ הוספת הזמנה קבועה</button>
           <button className="btn btn-sec" onClick={onClose}>סגירה</button>
         </div>
       </div>
@@ -831,10 +782,12 @@ function App() {
   const [bookNote,    setBookNote]    = useState('');
   const [isLessonBk,  setIsLessonBk]  = useState(false);
   const [typeSelect,  setTypeSelect]  = useState(null); // {date,court,slot,endSlot}
-  const [showRecur,     setShowRecur]     = useState(false);
-  const [showRecurForm, setShowRecurForm] = useState(false);
-  const [recurRules,    setRecurRules]    = useState([]);
-  const [recurErr,      setRecurErr]      = useState('');
+  const [showRecur,   setShowRecur]   = useState(false);
+  const [recurRules,  setRecurRules]  = useState([]);
+  const [recurErr,    setRecurErr]    = useState('');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurDays,   setRecurDays]   = useState([]);
+  const [recurToDate, setRecurToDate] = useState('');
 
   const ws   = weekSun(addD(today, wkOff*7));
   const days = Array.from({length:7},(_,i)=>addD(ws,i));
@@ -962,6 +915,17 @@ function App() {
       if (editBk) {
         await api.upd(editBk.id, {startSlot:pend.startSlot, endSlot:pend.endSlot, phone});
         setEditBk(null);
+      } else if (isAdmin && isRecurring) {
+        await api.recurCreate({
+          name: bookName.trim() || user,
+          courts: [pend.court],
+          days: recurDays,
+          startSlot: pend.startSlot,
+          endSlot: pend.endSlot,
+          fromDate: pend.date,
+          toDate: recurToDate || null,
+          phone,
+        });
       } else {
         await api.create({court:pend.court,date:pend.date,startSlot:pend.startSlot,endSlot:pend.endSlot,userName:bookName.trim()||user,phone:isAdmin?(bookPhone||phone):phone,...(isLessonBk?{isLesson:true}:{}),...(isAdmin&&bookNote.trim()?{note:bookNote.trim()}:{})});
       }
@@ -975,12 +939,6 @@ function App() {
 
   const loadRecur = async () => {
     try { setRecurRules(await api.recurList()); } catch(e){ console.error(e); }
-  };
-
-  const addRecur = async (rule) => {
-    setRecurErr('');
-    try { await api.recurCreate({...rule, phone}); setShowRecurForm(false); await loadRecur(); load(); }
-    catch(e){ setRecurErr(e.message); }
   };
 
   const delRecur = async (id) => {
@@ -1131,7 +1089,7 @@ function App() {
               {adminMode
                 ? <button className="btn btn-sec" onClick={()=>toggleAdminMode(false)}>🏃 עבור למצב שחקן</button>
                 : <button className="btn btn-ok"  onClick={()=>toggleAdminMode(true)}>🛡️ עבור למצב מנהל</button>}
-              {adminMode && <button className="btn btn-sec" onClick={()=>{setShowMode(false);setRecurErr('');loadRecur();setShowRecur(true);}}>🔁 הזמנות קבועות</button>}
+              {adminMode && <button className="btn btn-sec" onClick={()=>{setShowMode(false);loadRecur();setShowRecur(true);}}>🔁 הזמנות קבועות</button>}
               <button className="btn btn-sec" onClick={()=>{setShowMode(false);setShowNm(true);}}>✏️ עריכת פרטים</button>
             </div>
           </div>
@@ -1151,17 +1109,21 @@ function App() {
         </div>
       )}
       {timePick && <TimePickerModal {...timePick} isAdmin={isAdmin} isLesson={isLessonBk} onCancel={()=>{setTimePick(null);setEditBk(null);}}
-        onSelect={sel=>{setTimePick(null);setPend(sel);setCfmErr('');if(!isLessonBk){setBookName(user);setBookPhone(phone);}setBookNote('');}} />}
-      {pend   && <ConfirmModal sel={pend} user={user} phone={phone} isAdmin={isAdmin} bookName={bookName} setBookName={setBookName} bookPhone={bookPhone} setBookPhone={setBookPhone} bookNote={bookNote} setBookNote={setBookNote} isLesson={isLessonBk} setIsLesson={setIsLessonBk} onOk={confirm} onCancel={()=>setPend(null)} err={cfmErr} />}
+        onSelect={sel=>{
+          setTimePick(null);setPend(sel);setCfmErr('');
+          if(!isLessonBk){setBookName(user);setBookPhone(phone);}
+          setBookNote('');
+          const [y,m,d] = sel.date.split('-').map(Number);
+          setIsRecurring(false);setRecurDays([new Date(y,m-1,d).getDay()]);setRecurToDate('');
+        }} />}
+      {pend   && <ConfirmModal sel={pend} user={user} phone={phone} isAdmin={isAdmin} bookName={bookName} setBookName={setBookName} bookPhone={bookPhone} setBookPhone={setBookPhone} bookNote={bookNote} setBookNote={setBookNote} isLesson={isLessonBk} setIsLesson={setIsLessonBk}
+        isRecurring={isRecurring} setIsRecurring={setIsRecurring} recurDays={recurDays} setRecurDays={setRecurDays} recurToDate={recurToDate} setRecurToDate={setRecurToDate}
+        onOk={confirm} onCancel={()=>setPend(null)} err={cfmErr} />}
       {selBk  && <DetailModal bk={selBk} isOwner={selBk.phone===phone||isAdmin} isAdmin={isAdmin} onDel={delBk}
         onEdit={()=>{ setEditBk(selBk); setTimePick({date:selBk.date,court:selBk.court,slot:selBk.start_slot,endSlot:selBk.end_slot}); setSelBk(null); }}
         onSave={(name,ph,note)=>saveDetails(selBk.id,name,ph,note)}
         onClose={()=>setSelBk(null)} />}
-      {showRecur && <RecurringManageModal rules={recurRules}
-        onAdd={()=>{setShowRecur(false);setRecurErr('');setShowRecurForm(true);}}
-        onDelete={delRecur} onClose={()=>setShowRecur(false)} />}
-      {showRecurForm && <RecurringFormModal onSave={addRecur}
-        onCancel={()=>{setShowRecurForm(false);setShowRecur(true);}} err={recurErr} />}
+      {showRecur && <RecurringManageModal rules={recurRules} onDelete={delRecur} onClose={()=>setShowRecur(false)} />}
     </div>
   );
 }
